@@ -32,7 +32,8 @@ function DeleteEmptyChunks_doit()
 	local playerForceNames = {}
 	local i_players = 0
 	local radius =  settings.global["DeleteEmptyChunks_radius"].value
-	local concrete =  settings.global["DeleteEmptyChunks_concrete"].value
+	local paving =  settings.global["DeleteEmptyChunks_paving"].value
+	local paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right"}
 
 	-- all player forces
 	for player_index, player in pairs(game.players) do
@@ -47,10 +48,10 @@ function DeleteEmptyChunks_doit()
 			forcesString = forcesString .. ", " .. forceName
 		end
 	end
-	game.players[1].print ("Forces: " .. forcesString)
+	printAll("Forces: " .. forcesString)
 
 	local count_with_entities = 0
-	local count_with_concrete = 0
+	local count_with_paving = 0
 	local count_adjacent = 0
 	local count_total_chunks = 0
 	local count_keep = 0
@@ -63,21 +64,29 @@ function DeleteEmptyChunks_doit()
 		local i_count = 0;
 		-- iterate chunks
 		for chunk in (chunks) do
-			local chunkArea = {{chunk.x*32, chunk.y*32}, {chunk.x*32+32, chunk.y*32+32}}
+			local overlap = 1
+			local chunkArea = {{chunk.x*32-overlap, chunk.y*32-overlap}, {chunk.x*32+32+overlap, chunk.y*32+32+overlap}}
 			for n3, forceName in pairs (playerForceNames) do
-				local hasConcrete = false
+				local hasPaving = false
 				local count = surface.count_entities_filtered{area=chunkArea, force=forceName, limit=1} or 0
-				if concrete then
+				if paving then
 					if count == 0 then
-						for x=chunk.x*32,chunk.x*32+32 do
-							for y=chunk.y*32,chunk.y*32+32 do
+						for x=chunk.x*32,chunk.x*32+31 do
+							for y=chunk.y*32,chunk.y*32+31 do
 								local t = surface.get_tile(x,y)
-								if t.valid and t.name == "concrete" then
-									hasConcrete = true
+								if t and t.valid then
+									for i, name in pairs (paving_list) do
+										if t.name == name then
+											hasPaving = true
+											break
+										end
+									end
+								end
+								if hasPaving then
 									break
 								end
 							end
-							if hasConcrete then
+							if hasPaving then
 								break
 							end
 						end
@@ -90,20 +99,20 @@ function DeleteEmptyChunks_doit()
 					keepcords[chunk.x][chunk.y]=1
 					count_with_entities = count_with_entities + 1
 				end
-				if hasConcrete then 
+				if hasPaving then 
 					if keepcords[chunk.x] == nil then
 						keepcords[chunk.x]={}
 					end
 					keepcords[chunk.x][chunk.y]=1
-					count_with_concrete = count_with_concrete + 1
+					count_with_paving = count_with_paving + 1
 				end
 			end
 			count_total_chunks = count_total_chunks + 1
 		end
-		game.players[1].print ("Starting chunks: " .. count_total_chunks)
-		game.players[1].print ("Chunks with entities: " .. count_with_entities)
-		if concrete then
-			game.players[1].print ("Chunks with concrete: " .. count_with_concrete)
+		printAll("Starting chunks: " .. count_total_chunks)
+		printAll("Chunks with entities: " .. count_with_entities)
+		if paving then
+			printAll("Chunks with paving: " .. count_with_paving)
 		end
 		chunks = surface.get_chunks()
 		for chunk in (chunks) do
@@ -131,7 +140,14 @@ function DeleteEmptyChunks_doit()
 			end
 		end 
 	end
-	game.players[1].print ("Chunks adjacent: " .. count_adjacent)
-	game.players[1].print ("Chunks kept: " .. count_keep)
-	game.players[1].print ("Chunks deleted: " .. count_deleted)
+	printAll("Chunks adjacent: " .. count_adjacent)
+	printAll("Chunks deleted: " .. count_deleted)
+	printAll("Chunks remaining: " .. count_keep)
+end
+
+function printAll(text)
+	log (text)
+	for player_index, player in pairs (game.players) do
+		game.players[player_index].print (text)
+	end
 end

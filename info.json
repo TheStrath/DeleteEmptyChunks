@@ -1,9 +1,9 @@
 {
   "name": "DeleteEmptyChunks",
-  "description": "Delete all chunks without your buildings, config radius & concrete detection\n\nBased on DestroyEmptyChunks 0.0.5 by darkfrei\n\tv0.0.7 Initial Release",
-  "version": "0.0.7",
+  "description": "Delete all chunks without your buildings, config radius & paving detection\n\nBased on DestroyEmptyChunks 0.0.5 by darkfrei\n\tv0.1.0 Backported bugfixes from DestroyEmptyChunks 0.2.1\n\t       Allowed for paving other than concrete\n\tv0.0.7 Initial Release",
+  "version": "0.1.0",
   "title": "Delete Empty Chunks",
   "author": "Strath",
   "dependencies": ["base"],
-  "factorio_version": "0.15"
+  "factorio_version": "0.16"
 }
