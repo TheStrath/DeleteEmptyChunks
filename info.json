@@ -1,7 +1,7 @@
 {
   "name": "DeleteEmptyChunks",
-  "description": "Delete all chunks without your buildings or concrete detection\n\nBased on DestroyEmptyChunks 0.0.5 by darkfrei\n\tv0.0.6 Unrelease",
-  "version": "0.0.6",
+  "description": "Delete all chunks without your buildings, config radius & concrete detection\n\nBased on DestroyEmptyChunks 0.0.5 by darkfrei\n\tv0.0.7 Initial Release",
+  "version": "0.0.7",
   "title": "Delete Empty Chunks",
   "author": "Strath",
   "dependencies": ["base"],
