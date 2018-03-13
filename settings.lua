@@ -10,6 +10,6 @@ data:extend({
 		type = "bool-setting",
 		name = "DeleteEmptyChunks_paving",
 		setting_type = "runtime-global",
-		default_value = false
+		default_value = true
 	}
 })

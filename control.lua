@@ -29,13 +29,20 @@ script.on_event(defines.events.on_gui_click, function(event)
 end)
 
 function DeleteEmptyChunks_doit()
-	local playerForceNames = {}
-	local i_players = 0
 	local radius =  settings.global["DeleteEmptyChunks_radius"].value
 	local paving =  settings.global["DeleteEmptyChunks_paving"].value
 	local paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right"}
 
+	local count_with_entities = 0
+	local count_with_paving = 0
+	local count_adjacent = 0
+	local count_total_chunks = 0
+	local count_keep = 0
+	local count_deleted = 0
+	
 	-- all player forces
+	local i_players = 0
+	local playerForceNames = {}
 	for player_index, player in pairs(game.players) do
 		i_players = i_players + 1
 		playerForceNames[i_players] = player.force.name
@@ -50,76 +57,58 @@ function DeleteEmptyChunks_doit()
 	end
 	printAll("Forces: " .. forcesString)
 
-	local count_with_entities = 0
-	local count_with_paving = 0
-	local count_adjacent = 0
-	local count_total_chunks = 0
-	local count_keep = 0
-	local count_deleted = 0
-
-	-- iterate surfaces
+	-- Iterate Surfaces
 	for n2, surface in pairs (game.surfaces) do
 		local chunks = surface.get_chunks()
 		local keepcords = {}
-		local i_count = 0;
-		-- iterate chunks
+
+		-- First Pass
 		for chunk in (chunks) do
+			local count = 0
+			local hasPaving = false
 			local overlap = 1
 			local chunkArea = {{chunk.x*32-overlap, chunk.y*32-overlap}, {chunk.x*32+32+overlap, chunk.y*32+32+overlap}}
 			for n3, forceName in pairs (playerForceNames) do
-				local hasPaving = false
-				local count = surface.count_entities_filtered{area=chunkArea, force=forceName, limit=1} or 0
-				if paving then
-					if count == 0 then
-						for x=chunk.x*32,chunk.x*32+31 do
-							for y=chunk.y*32,chunk.y*32+31 do
-								local t = surface.get_tile(x,y)
-								if t and t.valid then
-									for i, name in pairs (paving_list) do
-										if t.name == name then
-											hasPaving = true
-											break
-										end
-									end
-								end
-								if hasPaving then
-									break
-								end
-							end
-							if hasPaving then
-								break
-							end
-						end
+				count = surface.count_entities_filtered{area=chunkArea, force=forceName, limit=1}
+			end
+			if count == 0 and paving then
+				local pavedArea = {{chunk.x*32, chunk.y*32}, {chunk.x*32+32, chunk.y*32+32}}
+				for i, tileName in pairs (paving_list) do
+					if surface.count_tiles_filtered{area=pavedArea, name=tileName, limit=1} ~= 0 then
+						hasPaving = true
+						break
 					end
 				end
-				if count > 0 then 
-					if keepcords[chunk.x] == nil then
-						keepcords[chunk.x]={}
-					end
-					keepcords[chunk.x][chunk.y]=1
-					count_with_entities = count_with_entities + 1
+			end
+			if count > 0 then 
+				if keepcords[chunk.x] == nil then
+					keepcords[chunk.x]={}
 				end
-				if hasPaving then 
-					if keepcords[chunk.x] == nil then
-						keepcords[chunk.x]={}
-					end
-					keepcords[chunk.x][chunk.y]=1
-					count_with_paving = count_with_paving + 1
+				keepcords[chunk.x][chunk.y]=1
+				count_with_entities = count_with_entities + 1
+			elseif hasPaving then 
+				if keepcords[chunk.x] == nil then
+					keepcords[chunk.x]={}
 				end
+				keepcords[chunk.x][chunk.y]=1
+				count_with_paving = count_with_paving + 1
 			end
 			count_total_chunks = count_total_chunks + 1
 		end
-		printAll("Starting chunks: " .. count_total_chunks)
-		printAll("Chunks with entities: " .. count_with_entities)
-		if paving then
-			printAll("Chunks with paving: " .. count_with_paving)
+
+		printAll("Starting with " .. count_total_chunks .." chunks")
+		printAll("Chunks with player entities: " .. count_with_entities)
+		if paving and count_with_paving > 0 then
+			printAll("Empty chunks with paving: " .. count_with_paving)
 		end
+
+		-- Second Pass
 		chunks = surface.get_chunks()
 		for chunk in (chunks) do
 			local mustClean = true
 			if keepcords[chunk.x] ~= nil and keepcords[chunk.x][chunk.y] ~= nil then
 				mustClean = false
-			else
+			elseif radius > 0 then
 				for i, x in pairs(keepcords) do
 					if chunk.x <= i + radius and chunk.x >= i - radius then
 						for j, y in pairs(x) do
@@ -128,6 +117,9 @@ function DeleteEmptyChunks_doit()
 								count_adjacent = count_adjacent + 1
 								break
 							end
+						end
+						if not mustClean then
+							break
 						end
 					end
 				end
@@ -139,10 +131,13 @@ function DeleteEmptyChunks_doit()
 				count_keep = count_keep + 1
 			end
 		end 
+		-- Done
+		if radius > 0 then
+			printAll("Chunks adjacent: " .. count_adjacent)
+		end
+		printAll("Keeping " .. count_keep .. " chunks")
+		printAll("Deleted " .. count_deleted .. " chunks")
 	end
-	printAll("Chunks adjacent: " .. count_adjacent)
-	printAll("Chunks deleted: " .. count_deleted)
-	printAll("Chunks remaining: " .. count_keep)
 end
 
 function printAll(text)
