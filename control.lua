@@ -31,28 +31,34 @@ function DeleteEmptyChunks.ShowButton(player)
 end
 
 function DeleteEmptyChunks.doit()
+	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
 	local radius = settings.global["DeleteEmptyChunks_radius"].value
 	local paving = settings.global["DeleteEmptyChunks_paving"].value
 	local printAll = DeleteEmptyChunks.printAll
 	local getKeepList = DeleteEmptyChunks.getKeepList
 	local deleteChunks = DeleteEmptyChunks.deleteChunks
+	local vanilla_paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right",
+	                             "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right" }
 	local paving_list = {}
-
-	local surface_Factorissimo2_name = "Factory floor "
-	local surface_Factorissimo2_skiped = 0
+	local surface_list = {}
+	local mod_surface_skipped = 0
 	
 	if paving then
-		printAll({'DeleteEmptyChunks_text_notifier_with', radius})
-		paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right" }
-		if game.active_mods["AsphaltRoads"] then
-			local AsphaltRoads_list = DeleteEmptyChunks.getAsphaltRoads()
-			for _,v in ipairs(AsphaltRoads_list) do 
-				table.insert(paving_list, v)
-			end
-			printAll({'DeleteEmptyChunks_text_AsphaltRoads', #AsphaltRoads_list})
+		paving_list = DeleteEmptyChunks.getPavingTiles()
+	end
+	if #paving_list > 0 then
+		if radius > 0 then
+			printAll({'DeleteEmptyChunks_text_notifier_pr', radius})
+		else
+			printAll({'DeleteEmptyChunks_text_notifier_p'})
 		end
+		printAll({'DeleteEmptyChunks_text_notifier_paving', #paving_list, #vanilla_paving_list, #paving_list - #vanilla_paving_list})
 	else
-		printAll({'DeleteEmptyChunks_text_notifier_without', radius})
+		if radius > 0 then
+			printAll({'DeleteEmptyChunks_text_notifier_r', radius})
+		else
+			printAll({'DeleteEmptyChunks_text_notifier'})
+		end
 	end
 	
 	-- all player forces
@@ -60,95 +66,164 @@ function DeleteEmptyChunks.doit()
 	for _, player in pairs(game.players) do
 		table.insert( playerForceNames, player.force.name )
 	end
-	printAll({'DeleteEmptyChunks_text_force',DeleteEmptyChunks.table_to_csv(playerForceNames)})
-
+	if #playerForceNames > 1 then printAll({'DeleteEmptyChunks_text_force', DeleteEmptyChunks.table_to_csv(playerForceNames)}) end
+	local found = false
 	-- Iterate Surfaces
 	for _, surface in pairs (game.surfaces) do
-		if string.sub(surface.name,1,string.len(surface_Factorissimo2_name)) == surface_Factorissimo2_name then
-			surface_Factorissimo2_skiped = surface_Factorissimo2_skiped + 1
-		else
+		table.insert( surface_list, surface.name )
+		if surface.name == target_surface then
 			-- First Pass
 			local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving_list)
-			printAll({'DeleteEmptyChunks_text_starting', list.total, surface.name})
-			printAll({'DeleteEmptyChunks_text_entities', list.occupied})
-			if paving and list.paved > 0 then
-				printAll({'DeleteEmptyChunks_text_paving', list.paved})
-			end
 			-- Second Pass
 			local result = deleteChunks(surface, list.coordinates, radius)
 			-- Done
-			if radius > 0 then
-				printAll({'DeleteEmptyChunks_text_adjacent', result.adjacent})
+			printAll({'DeleteEmptyChunks_text_starting', list.total, surface.name, list.total - list.uncharted})
+			if result.kept > 0 then
+				if list.occupied > 0 then
+					if list.paved > 0 then
+						if result.adjacent > 0 then
+							printAll({'DeleteEmptyChunks_text_keep_epa', result.kept, list.occupied, list.paved, result.adjacent})
+						else
+							printAll({'DeleteEmptyChunks_text_keep_ep', result.kept, list.occupied, list.paved})
+						end
+					else
+						if result.adjacent > 0 then
+							printAll({'DeleteEmptyChunks_text_keep_ea', result.kept, list.occupied, result.adjacent})
+						else
+							printAll({'DeleteEmptyChunks_text_keep_e', result.kept, list.occupied})
+						end
+					end
+				elseif list.paved > 0 then
+					if result.adjacent > 0 then
+						printAll({'DeleteEmptyChunks_text_keep_pa', result.kept, list.paved, result.adjacent})
+					else
+						printAll({'DeleteEmptyChunks_text_keep_p', result.kept, list.paved})
+					end
+				end
 			end
-			printAll({'DeleteEmptyChunks_text_keep', result.kept})
 			printAll({'DeleteEmptyChunks_text_delete', result.deleted})
+			found = true
 		end
 	end
-	if surface_Factorissimo2_skiped > 0 then
-		printAll({'DeleteEmptyChunks_text_Factorissimo2', surface_Factorissimo2_skiped})
+	if not found and #surface_list > 0 then
+		printAll({'DeleteEmptyChunks_text_mod_nosurface', target_surface, DeleteEmptyChunks.table_to_csv(surface_list)})
+	end
+	if mod_surface_skipped > 0 then
+		printAll({'DeleteEmptyChunks_text_mod_surfaces', mod_surface_skipped})
 	end
 end
 
 function DeleteEmptyChunks.printAll(text)
 	log (text)
-	for player_index, player in pairs (game.players) do
-		game.players[player_index].print (text)
-	end
+	game.print (text)
 end
 
 function DeleteEmptyChunks.table_to_csv(list)
 	local str = ""
 	for _, item in pairs (list) do
-		if str ~= "" then
-			str = str .. ", " .. item
+		if string.len(str) > 0 then
+			str = str .. "\", \"" .. item
 		else
-			str = item
+			str = "\"" .. item
 		end
 	end
+	if string.len(str) > 0 then
+		str = str .. "\""
+	end
 	return str
+end
+
+function DeleteEmptyChunks.getPavingTiles()
+	local paving_list = {}
+	local non_paving = {"deepwater", "deepwater-green", "dirt-1", "dirt-2", "dirt-3", "dirt-4", "dirt-5",
+	                    "dirt-6", "dirt-7", "dry-dirt", "grass-1", "grass-2", "grass-3", "grass-4", "lab-dark-1",
+	                    "lab-dark-2", "lab-white", "out-of-map", "red-desert-0", "red-desert-1", "red-desert-2",
+	                    "red-desert-3", "sand-1", "sand-2", "sand-3", "tutorial-grid", "water", "water-green"}
+	
+	local Factorissimo2_tiles = {"factory-entrance-1", "factory-entrance-2", "factory-entrance-3", "factory-floor-1",
+	                             "factory-floor-2", "factory-floor-3", "factory-pattern-1", "factory-pattern-2",
+	                             "factory-pattern-3", "factory-wall-1", "factory-wall-2", "factory-wall-3", "out-of-factory"}
+	if game.active_mods["Factorissimo2"] then
+		for _, v in ipairs(Factorissimo2_tiles) do 
+			table.insert(non_paving, v)
+		end
+	end
+	
+	local Surfaces_remake_tiles = {"sky-void", "underground-dirt", "underground-wall", "wooden-floor"}
+	if game.active_mods["Surfaces_remake"] then
+		for _, v in ipairs(Surfaces_remake_tiles) do 
+			table.insert(non_paving, v)
+		end
+	end
+	
+	for _, t in pairs(game.tile_prototypes) do
+		local found = false
+		for _, s in pairs(non_paving) do
+			if t.name == s then
+				found = true
+				break
+			end
+		end
+		if not found then
+			table.insert(paving_list, t.name)
+		end
+	end
+	return paving_list
 end
 
 function DeleteEmptyChunks.getKeepList(surface, playerForceNames, overlap, pavers)
 	local count_entities = surface.count_entities_filtered
 	local count_tiles = surface.count_tiles_filtered
 	local count_total_chunks = 0
+	local count_uncharted = 0
 	local count_with_entities = 0
 	local count_with_paving = 0
 	local keepcords = {}
 	local chunks = surface.get_chunks()
 	for chunk in (chunks) do
 		local chunk_occupied = false
+		local chunk_charted = false
 		local chunk_paved = false
 		local chunkArea = {{chunk.x*32-overlap, chunk.y*32-overlap}, {chunk.x*32+32+overlap, chunk.y*32+32+overlap}}
 		for _, forceName in pairs (playerForceNames) do
-			if count_entities{area=chunkArea, force=forceName, limit=1} ~= 0 then
-				chunk_occupied = true
+			if game.forces[forceName].is_chunk_charted( surface, chunk ) then
+				chunk_charted = true
 				break
 			end
 		end
-		if not chunk_occupied and #pavers then
-			local pavedArea = {{chunk.x*32, chunk.y*32}, {chunk.x*32+32, chunk.y*32+32}}
-			for _, tileName in pairs (pavers) do
-				if count_tiles{area=pavedArea, name=tileName, limit=1} ~= 0 then
-					chunk_paved = true
+		if chunk_charted then
+			for _, forceName in pairs (playerForceNames) do
+				if count_entities{area=chunkArea, force=forceName, limit=1} ~= 0 then
+					chunk_occupied = true
 					break
 				end
 			end
-		end
-		if chunk_occupied or chunk_paved then 
-			if keepcords[chunk.x] == nil then
-				keepcords[chunk.x]={}
+			if not chunk_occupied and #pavers > 0 then
+				local pavedArea = {{chunk.x*32, chunk.y*32}, {chunk.x*32+32, chunk.y*32+32}}
+				for _, tileName in pairs (pavers) do
+					if count_tiles{area=pavedArea, name=tileName, limit=1} ~= 0 then
+						chunk_paved = true
+						break
+					end
+				end
 			end
-			keepcords[chunk.x][chunk.y]=1
-			if chunk_occupied then 
-				count_with_entities = count_with_entities + 1
-			elseif chunk_paved then 
-				count_with_paving = count_with_paving + 1
+			if chunk_occupied or chunk_paved then 
+				if keepcords[chunk.x] == nil then
+					keepcords[chunk.x]={}
+				end
+				keepcords[chunk.x][chunk.y]=1
+				if chunk_occupied then 
+					count_with_entities = count_with_entities + 1
+				elseif chunk_paved then 
+					count_with_paving = count_with_paving + 1
+				end
 			end
+		else
+			count_uncharted = count_uncharted + 1
 		end
 		count_total_chunks = count_total_chunks + 1
 	end
-	return {total=count_total_chunks, occupied=count_with_entities, paved=count_with_paving, coordinates=keepcords}
+	return {total=count_total_chunks, occupied=count_with_entities, paved=count_with_paving, coordinates=keepcords, uncharted = count_uncharted}
 end
 
 function DeleteEmptyChunks.deleteChunks(surface, coordinates, radius)
@@ -184,55 +259,4 @@ function DeleteEmptyChunks.deleteChunks(surface, coordinates, radius)
 		end
 	end
 	return {adjacent=count_adjacent, deleted=count_deleted, kept=count_keep}
-end
-
-function DeleteEmptyChunks.getAsphaltRoads()
-	local list = {"Arci-asphalt"}
-	
-	local prefix = "Arci-"
-	
-	local type1_tilesets = {"asphalt-zebra-crossing"}
-	local type2_tilesets = {"asphalt-triangle-white"}
-	local type3_tilesets = {"asphalt-hazard-white", "asphalt-hazard-yellow", "asphalt-hazard-red", "asphalt-hazard-blue", "asphalt-hazard-green"}
-	local type4_tilesets = {"marking-white", "marking-white-dl"}
-	local type5_tilesets = {"marking-yellow", "marking-yellow-dl"}
-
-	local type1_directions = {"-horizontal","-vertical"}
-	local type2_directions = {"-up","-right","-down","-left"}
-	local type3_directions = {"-right","-left"}
-	local type4_directions = {"-straight-horizontal","-straight-vertical",
-	                          "-diagonal-left","-diagonal-right",
-	                          "-right-turn-up","-right-turn-right","-right-turn-down","-right-turn-left",
-	                          "-left-turn-up","-left-turn-right","-left-turn-down","-left-turn-left"}
-	local type5_directions = {"-straight-horizontal","-straight-vertical",
-	                          "-diagonal-left","-diagonal-right",
-	                          "-right-turn-up","-right-turn-right","-right-turn-down","-right-turn-left",
-	                          "-left-turn-up","-left-turn-right","-left-turn-down","-left-turn-left"}
-
-	for i=1, #type1_tilesets do
-		for j=1, #type1_directions do
-			table.insert(list, prefix .. type1_tilesets[i] .. type1_directions[j])
-		end
-	end
-	for i=1, #type2_tilesets do
-		for j=1, #type2_directions do
-			table.insert(list, prefix .. type2_tilesets[i] .. type2_directions[j])
-		end
-	end
-	for i=1, #type3_tilesets do
-		for j=1, #type3_directions do
-			table.insert(list, prefix .. type3_tilesets[i] .. type3_directions[j])
-		end
-	end
-	for i=1, #type4_tilesets do
-		for j=1, #type4_directions do
-			table.insert(list, prefix .. type4_tilesets[i] .. type4_directions[j])
-		end
-	end
-	for i=1, #type5_tilesets do
-		for j=1, #type5_directions do
-			table.insert(list, prefix .. type5_tilesets[i] .. type5_directions[j])
-		end
-	end
-	return list
 end
