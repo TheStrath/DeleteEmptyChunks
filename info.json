@@ -1,0 +1,9 @@
+{
+  "name": "DeleteEmptyChunks",
+  "description": "Delete all chunks without your buildings or concrete detection\n\nBased on DestroyEmptyChunks 0.0.5 by darkfrei\n\tv0.0.6 Unrelease",
+  "version": "0.0.6",
+  "title": "Delete Empty Chunks",
+  "author": "Strath",
+  "dependencies": ["base"],
+  "factorio_version": "0.15"
+}
