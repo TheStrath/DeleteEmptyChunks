@@ -43,7 +43,7 @@ function DeleteEmptyChunks.doit()
 	
 	if paving then
 		printAll({'DeleteEmptyChunks_text_notifier_with', radius})
-		paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right"}
+		paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right" }
 		if game.active_mods["AsphaltRoads"] then
 			local AsphaltRoads_list = DeleteEmptyChunks.getAsphaltRoads()
 			for _,v in ipairs(AsphaltRoads_list) do 
