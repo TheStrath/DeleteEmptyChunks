@@ -103,6 +103,10 @@ function DeleteEmptyChunks.doit()
 			end
 			printAll({'DeleteEmptyChunks_text_delete', result.deleted})
 			found = true
+			if game.active_mods["rso-mod"] then
+				remote.call("RSO", "disableStartingArea")
+				remote.call("RSO", "resetGeneration", surface)
+			end
 		end
 	end
 	if not found and #surface_list > 0 then
