@@ -2,7 +2,7 @@ DeleteEmptyChunks = {}
 
 script.on_event({defines.events.on_player_created, defines.events.on_player_joined_game, defines.events.on_player_respawned}, function(event)
 	local player = game.players[event.player_index]
-	DeleteEmptyChunks_ShowButton(player)
+	DeleteEmptyChunks.ShowButton(player)
 end)
 
 script.on_event(defines.events.on_tick, function (event)
