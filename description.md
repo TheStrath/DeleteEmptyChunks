@@ -5,6 +5,10 @@ Based on [DestroyEmptyChunks](https://mods.factorio.com/mods/darkfrei/DestroyEmp
 
 ##Version History:
 
+###v0.3.2 (2018-05-02)
+* Surface.count_tiles_filtered now accepts a table of filters in Factorio 0.16.40
+* Prevent deleting the chunk a player is in when that chunk has not yet been charted
+
 ###v0.3.1 (2018-03-11)
 * Added support for RSO. Unavoidable side effects: Because of the way RSO handles resource generation, if you've 'pinned' part of a resource, RSO will create an identical resource shifted by a bit within that region. If you delete the starting area chunks, those resources are gone. Otherwise, if RSO is allowed to regenerate them, it will spam the starting area with duplicates as many times as one clicks the button.
 

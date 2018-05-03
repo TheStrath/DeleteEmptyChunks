@@ -63,8 +63,10 @@ function DeleteEmptyChunks.doit()
 	
 	-- all player forces
 	local playerForceNames = {}
+	local playerPositions = {}
 	for _, player in pairs(game.players) do
 		table.insert( playerForceNames, player.force.name )
+		table.insert( playerPositions, {x = math.floor(player.position.x / 32), y = math.floor(player.position.y / 32)})
 	end
 	if #playerForceNames > 1 then printAll({'DeleteEmptyChunks_text_force', DeleteEmptyChunks.table_to_csv(playerForceNames)}) end
 	local found = false
@@ -74,6 +76,13 @@ function DeleteEmptyChunks.doit()
 		if surface.name == target_surface then
 			-- First Pass
 			local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving_list)
+			-- Save players from the void
+			for _, position in pairs(playerPositions) do
+				if list.coordinates[position.x] == nil then
+					list.coordinates[position.x]={}
+				end
+				list.coordinates[position.x][position.y]=1
+			end
 			-- Second Pass
 			local result = deleteChunks(surface, list.coordinates, radius)
 			-- Done
@@ -204,11 +213,8 @@ function DeleteEmptyChunks.getKeepList(surface, playerForceNames, overlap, paver
 			end
 			if not chunk_occupied and #pavers > 0 then
 				local pavedArea = {{chunk.x*32, chunk.y*32}, {chunk.x*32+32, chunk.y*32+32}}
-				for _, tileName in pairs (pavers) do
-					if count_tiles{area=pavedArea, name=tileName, limit=1} ~= 0 then
-						chunk_paved = true
-						break
-					end
+				if count_tiles{area=pavedArea, name=pavers, limit=1} ~= 0 then
+					chunk_paved = true
 				end
 			end
 			if chunk_occupied or chunk_paved then 

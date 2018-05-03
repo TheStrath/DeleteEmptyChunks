@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.2
+Date: 2018-05-02
+  Optimizations:
+    - Surface.count_tiles_filtered now accepts a table of filters in Factorio 0.16.40
+  Bugfixes:
+    - Prevent deleting the chunk a player is in when that chunk has not yet been charted
+---------------------------------------------------------------------------------------------------
 Version: 0.3.1
 Date: 2018-03-11
   Minor Features:
