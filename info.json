@@ -1,7 +1,7 @@
 {
   "name": "DeleteEmptyChunks",
   "description": "Delete chunks which contain no player entities, configurable chunk radius & paving detection",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "title": "Delete Empty Chunks",
   "author": "Strath",
   "dependencies": ["base >= 0.16.40"],

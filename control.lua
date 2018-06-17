@@ -1,42 +1,12 @@
-DeleteEmptyChunks = {}
+require("mod-gui")
 
-script.on_event({defines.events.on_player_created, defines.events.on_player_joined_game, defines.events.on_player_respawned}, function(event)
-	local player = game.players[event.player_index]
-	DeleteEmptyChunks.ShowButton(player)
-end)
-
-script.on_event(defines.events.on_tick, function (event)
-	if (game.tick % 120 == 0) then
-		for _, player in pairs(game.players) do
-			if not player.gui.left.DeleteEmptyChunks_button then 
-				DeleteEmptyChunks.ShowButton(player)
-			end
-		end
-	end
-end)
-
-script.on_event(defines.events.on_gui_click, function(event)
-	if event.element.name == "DeleteEmptyChunks_button" then 
-		DeleteEmptyChunks.doit() 
-	end
-end)
-
-function DeleteEmptyChunks.ShowButton(player)
-	if player ~= nil and player.valid then
-		local gui = player.gui.left
-		if not gui.DeleteEmptyChunks_button then
-			local button = gui.add({type="button", name="DeleteEmptyChunks_button", caption = {'DeleteEmptyChunks_buttontext'}})
-		end
-	end
-end
-
-function DeleteEmptyChunks.doit()
+function doit()
 	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
 	local radius = settings.global["DeleteEmptyChunks_radius"].value
 	local paving = settings.global["DeleteEmptyChunks_paving"].value
-	local printAll = DeleteEmptyChunks.printAll
-	local getKeepList = DeleteEmptyChunks.getKeepList
-	local deleteChunks = DeleteEmptyChunks.deleteChunks
+	local printAll = printAll
+	local getKeepList = getKeepList
+	local deleteChunks = deleteChunks
 	local vanilla_paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right",
 	                             "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right" }
 	local paving_list = {}
@@ -44,7 +14,7 @@ function DeleteEmptyChunks.doit()
 	local mod_surface_skipped = 0
 	
 	if paving then
-		paving_list = DeleteEmptyChunks.getPavingTiles()
+		paving_list = getPavingTiles()
 	end
 	if #paving_list > 0 then
 		if radius > 0 then
@@ -68,7 +38,7 @@ function DeleteEmptyChunks.doit()
 		table.insert( playerForceNames, player.force.name )
 		table.insert( playerPositions, {x = math.floor(player.position.x / 32), y = math.floor(player.position.y / 32)})
 	end
-	if #playerForceNames > 1 then printAll({'DeleteEmptyChunks_text_force', DeleteEmptyChunks.table_to_csv(playerForceNames)}) end
+	if #playerForceNames > 1 then printAll({'DeleteEmptyChunks_text_force', table_to_csv(playerForceNames)}) end
 	local found = false
 	-- Iterate Surfaces
 	for _, surface in pairs (game.surfaces) do
@@ -119,19 +89,19 @@ function DeleteEmptyChunks.doit()
 		end
 	end
 	if not found and #surface_list > 0 then
-		printAll({'DeleteEmptyChunks_text_mod_nosurface', target_surface, DeleteEmptyChunks.table_to_csv(surface_list)})
+		printAll({'DeleteEmptyChunks_text_mod_nosurface', target_surface, table_to_csv(surface_list)})
 	end
 	if mod_surface_skipped > 0 then
 		printAll({'DeleteEmptyChunks_text_mod_surfaces', mod_surface_skipped})
 	end
 end
 
-function DeleteEmptyChunks.printAll(text)
-	log (text)
-	game.print (text)
+function printAll(text)
+	log(text)
+	game.print(text)
 end
 
-function DeleteEmptyChunks.table_to_csv(list)
+function table_to_csv(list)
 	local str = ""
 	for _, item in pairs (list) do
 		if string.len(str) > 0 then
@@ -146,7 +116,7 @@ function DeleteEmptyChunks.table_to_csv(list)
 	return str
 end
 
-function DeleteEmptyChunks.getPavingTiles()
+function getPavingTiles()
 	local paving_list = {}
 	local non_paving = {"deepwater", "deepwater-green", "dirt-1", "dirt-2", "dirt-3", "dirt-4", "dirt-5",
 	                    "dirt-6", "dirt-7", "dry-dirt", "grass-1", "grass-2", "grass-3", "grass-4", "lab-dark-1",
@@ -184,7 +154,7 @@ function DeleteEmptyChunks.getPavingTiles()
 	return paving_list
 end
 
-function DeleteEmptyChunks.getKeepList(surface, playerForceNames, overlap, pavers)
+function getKeepList(surface, playerForceNames, overlap, pavers)
 	local count_entities = surface.count_entities_filtered
 	local count_tiles = surface.count_tiles_filtered
 	local count_total_chunks = 0
@@ -236,7 +206,7 @@ function DeleteEmptyChunks.getKeepList(surface, playerForceNames, overlap, paver
 	return {total=count_total_chunks, occupied=count_with_entities, paved=count_with_paving, coordinates=keepcords, uncharted = count_uncharted}
 end
 
-function DeleteEmptyChunks.deleteChunks(surface, coordinates, radius)
+function deleteChunks(surface, coordinates, radius)
 	local count_adjacent = 0
 	local count_keep = 0
 	local count_deleted = 0
@@ -269,4 +239,46 @@ function DeleteEmptyChunks.deleteChunks(surface, coordinates, radius)
 		end
 	end
 	return {adjacent=count_adjacent, deleted=count_deleted, kept=count_keep}
+end
+
+function show_gui(player)
+	local gui = mod_gui.get_button_flow(player)
+	if not gui.DeleteEmptyChunks then
+		gui.add{
+			type = "sprite-button",
+			name = "DeleteEmptyChunks",
+			sprite = "DeleteEmptyChunks_button",
+			style = mod_gui.button_style,
+			tooltip = {'DeleteEmptyChunks_buttontext'}
+		}
+	end
+end
+
+do---- Init ----
+script.on_init(function()
+	for _, player in pairs(game.players) do
+		if player and player.valid then show_gui(player) end
+	end
+end)
+
+script.on_configuration_changed(function(data)
+	for _, player in pairs(game.players) do
+		if player and player.valid then
+			if player.gui.left.DeleteEmptyChunks_button then	player.gui.left.DeleteEmptyChunks_button.destroy()	end
+			show_gui(player)
+		end
+	end
+end)
+
+script.on_event({defines.events.on_player_created, defines.events.on_player_joined_game, defines.events.on_player_respawned}, function(event)
+  local player = game.players[event.player_index]
+  if player and player.valid then show_gui(player) end
+end)
+
+script.on_event(defines.events.on_gui_click, function(event)
+  local gui = event.element
+  local player = game.players[event.player_index]
+  if not (player and player.valid and gui and gui.valid) then return end
+  if gui.name == "DeleteEmptyChunks" then doit() end
+end)
 end
