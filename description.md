@@ -5,7 +5,7 @@ Based on [DestroyEmptyChunks](https://mods.factorio.com/mods/darkfrei/DestroyEmp
 
 ##Version History:
 
-###v0.3.3 (2018-05-26)
+###v0.3.3 (2018-06-17)
 * New button, cleaner code, eliminate idle CPU usage
 
 ###v0.3.2 (2018-05-02)
