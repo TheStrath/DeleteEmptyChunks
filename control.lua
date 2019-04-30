@@ -7,14 +7,16 @@ function doit()
 	local printAll = printAll
 	local getKeepList = getKeepList
 	local deleteChunks = deleteChunks
-	local vanilla_paving_list = {"concrete", "stone-path", "hazard-concrete-left", "hazard-concrete-right",
-	                             "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right" }
+	local vanilla_paving_list = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "landfill",
+	                             "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right",
+	                             "stone-path", "water-mud", "water-shallow" }
 	local paving_list = {}
 	local surface_list = {}
 	local mod_surface_skipped = 0
 	
 	if paving then
 		paving_list = getPavingTiles()
+		--log(table_to_csv(paving_list))
 	end
 	if #paving_list > 0 then
 		if radius > 0 then
