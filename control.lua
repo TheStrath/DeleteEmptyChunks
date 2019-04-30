@@ -7,9 +7,9 @@ function doit()
 	local printAll = printAll
 	local getKeepList = getKeepList
 	local deleteChunks = deleteChunks
-	local vanilla_paving_list = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "landfill",
-	                             "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right",
-	                             "stone-path", "water-mud", "water-shallow" }
+	local vanilla_paving_list = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
+	                             "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path" }
+	-- ignoring these {"landfill", "water-mud", "water-shallow" 
 	local paving_list = {}
 	local surface_list = {}
 	local mod_surface_skipped = 0
