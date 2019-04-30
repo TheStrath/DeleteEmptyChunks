@@ -9,7 +9,7 @@ function doit()
 	local deleteChunks = deleteChunks
 	local vanilla_paving_list = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
 	                             "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path" }
-	-- ignoring these {"landfill", "water-mud", "water-shallow" 
+	-- ignoring these vanilla tiles: {"landfill", "water-mud", "water-shallow" 
 	local paving_list = {}
 	local surface_list = {}
 	local mod_surface_skipped = 0
@@ -123,7 +123,8 @@ function getPavingTiles()
 	local non_paving = {"deepwater", "deepwater-green", "dirt-1", "dirt-2", "dirt-3", "dirt-4", "dirt-5",
 	                    "dirt-6", "dirt-7", "dry-dirt", "grass-1", "grass-2", "grass-3", "grass-4", "lab-dark-1",
 	                    "lab-dark-2", "lab-white", "out-of-map", "red-desert-0", "red-desert-1", "red-desert-2",
-	                    "red-desert-3", "sand-1", "sand-2", "sand-3", "tutorial-grid", "water", "water-green"}
+	                    "red-desert-3", "sand-1", "sand-2", "sand-3", "tutorial-grid", "water", "water-green",
+	                    "landfill", "water-mud", "water-shallow"}
 	
 	local Factorissimo2_tiles = {"factory-entrance-1", "factory-entrance-2", "factory-entrance-3", "factory-floor-1",
 	                             "factory-floor-2", "factory-floor-3", "factory-pattern-1", "factory-pattern-2",
