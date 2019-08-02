@@ -97,6 +97,7 @@ function doit()
 		printAll({'DeleteEmptyChunks_text_mod_surfaces', mod_surface_skipped})
 	end
 end
+commands.add_command("DeleteEmptyChunks", {"DeleteEmptyChunks_command"}, doit)
 
 function printAll(text)
 	log(text)
