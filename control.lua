@@ -99,6 +99,12 @@ function doit()
 end
 commands.add_command("DeleteEmptyChunks", {"DeleteEmptyChunks_command"}, doit)
 
+remote.add_interface('DeleteEmptyChunks',
+{
+	DeleteEmptyChunks = doit
+})
+
+
 function printAll(text)
 	log(text)
 	game.print(text)
