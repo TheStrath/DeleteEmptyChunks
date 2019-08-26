@@ -1,36 +1,36 @@
 require("mod-gui")
-
-function doit()
+function remote_doit( args )
+	--remote.call("DeleteEmptyChunks", "getSurface")
+	--remote.call("DeleteEmptyChunks", "getRadius")
+	--remote.call("DeleteEmptyChunks", "getPaving")
+	--remote.call("DeleteEmptyChunks", "doIt", {surface = "nauvis", radius = 0, paving = false })
 	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
 	local radius = settings.global["DeleteEmptyChunks_radius"].value
 	local paving = settings.global["DeleteEmptyChunks_paving"].value
+	if args.surface ~= nil then
+		target_surface = args.surface
+	end
+	if args.radius ~= nil then
+		radius = args.radius
+	end
+	if args.paving ~= nil then
+		paving = args.paving
+	end
+	doit(target_surface, radius, paving)
+end
+
+function doit(target_surface, radius, paving)
 	local printAll = printAll
 	local getKeepList = getKeepList
 	local deleteChunks = deleteChunks
 	local vanilla_paving_list = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
 	                             "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path" }
-	-- ignoring these vanilla tiles: {"landfill", "water-mud", "water-shallow" 
+	-- ignoring these tiles: {"landfill", "water-mud", "water-shallow" 
 	local paving_list = {}
-	local surface_list = {}
-	local mod_surface_skipped = 0
 	
 	if paving then
 		paving_list = getPavingTiles()
 		--log(table_to_csv(paving_list))
-	end
-	if #paving_list > 0 then
-		if radius > 0 then
-			printAll({'DeleteEmptyChunks_text_notifier_pr', radius})
-		else
-			printAll({'DeleteEmptyChunks_text_notifier_p'})
-		end
-		printAll({'DeleteEmptyChunks_text_notifier_paving', #paving_list, #vanilla_paving_list, #paving_list - #vanilla_paving_list})
-	else
-		if radius > 0 then
-			printAll({'DeleteEmptyChunks_text_notifier_r', radius})
-		else
-			printAll({'DeleteEmptyChunks_text_notifier'})
-		end
 	end
 	
 	-- all player forces
@@ -41,60 +41,79 @@ function doit()
 		table.insert( playerPositions, {x = math.floor(player.position.x / 32), y = math.floor(player.position.y / 32)})
 	end
 	if #playerForceNames > 1 then printAll({'DeleteEmptyChunks_text_force', table_to_csv(playerForceNames)}) end
+	
+	-- Verify surface exists
+	local surface_list = {}
 	local found = false
-	-- Iterate Surfaces
 	for _, surface in pairs (game.surfaces) do
 		table.insert( surface_list, surface.name )
 		if surface.name == target_surface then
-			-- First Pass
-			local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving_list)
-			-- Save players from the void
-			for _, position in pairs(playerPositions) do
-				if list.coordinates[position.x] == nil then
-					list.coordinates[position.x]={}
-				end
-				list.coordinates[position.x][position.y]=1
-			end
-			-- Second Pass
-			local result = deleteChunks(surface, list.coordinates, radius)
-			-- Done
-			printAll({'DeleteEmptyChunks_text_starting', list.total, surface.name, list.total - list.uncharted})
-			if result.kept > 0 then
-				if list.occupied > 0 then
-					if list.paved > 0 then
-						if result.adjacent > 0 then
-							printAll({'DeleteEmptyChunks_text_keep_epa', result.kept, list.occupied, list.paved, result.adjacent})
-						else
-							printAll({'DeleteEmptyChunks_text_keep_ep', result.kept, list.occupied, list.paved})
-						end
-					else
-						if result.adjacent > 0 then
-							printAll({'DeleteEmptyChunks_text_keep_ea', result.kept, list.occupied, result.adjacent})
-						else
-							printAll({'DeleteEmptyChunks_text_keep_e', result.kept, list.occupied})
-						end
-					end
-				elseif list.paved > 0 then
-					if result.adjacent > 0 then
-						printAll({'DeleteEmptyChunks_text_keep_pa', result.kept, list.paved, result.adjacent})
-					else
-						printAll({'DeleteEmptyChunks_text_keep_p', result.kept, list.paved})
-					end
-				end
-			end
-			printAll({'DeleteEmptyChunks_text_delete', result.deleted})
 			found = true
-			if game.active_mods["rso-mod"] then
-				remote.call("RSO", "disableStartingArea")
-				remote.call("RSO", "resetGeneration", surface)
-			end
 		end
 	end
 	if not found and #surface_list > 0 then
 		printAll({'DeleteEmptyChunks_text_mod_nosurface', target_surface, table_to_csv(surface_list)})
-	end
-	if mod_surface_skipped > 0 then
-		printAll({'DeleteEmptyChunks_text_mod_surfaces', mod_surface_skipped})
+	else
+		if #paving_list > 0 then
+			if radius > 0 then
+				printAll({'DeleteEmptyChunks_text_notifier_pr', radius})
+			else
+				printAll({'DeleteEmptyChunks_text_notifier_p'})
+			end
+			printAll({'DeleteEmptyChunks_text_notifier_paving', #paving_list, #vanilla_paving_list, #paving_list - #vanilla_paving_list})
+		else
+			if radius > 0 then
+				printAll({'DeleteEmptyChunks_text_notifier_r', radius})
+			else
+				printAll({'DeleteEmptyChunks_text_notifier'})
+			end
+		end
+		-- Iterate Surfaces
+		for _, surface in pairs (game.surfaces) do
+			if surface.name == target_surface then
+				-- First Pass
+				local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving_list)
+				-- Save players from the void
+				for _, position in pairs(playerPositions) do
+					if list.coordinates[position.x] == nil then
+						list.coordinates[position.x]={}
+					end
+					list.coordinates[position.x][position.y]=1
+				end
+				-- Second Pass
+				local result = deleteChunks(surface, list.coordinates, radius)
+				-- Done
+				printAll({'DeleteEmptyChunks_text_starting', list.total, surface.name, list.total - list.uncharted})
+				if result.kept > 0 then
+					if list.occupied > 0 then
+						if list.paved > 0 then
+							if result.adjacent > 0 then
+								printAll({'DeleteEmptyChunks_text_keep_epa', result.kept, list.occupied, list.paved, result.adjacent})
+							else
+								printAll({'DeleteEmptyChunks_text_keep_ep', result.kept, list.occupied, list.paved})
+							end
+						else
+							if result.adjacent > 0 then
+								printAll({'DeleteEmptyChunks_text_keep_ea', result.kept, list.occupied, result.adjacent})
+							else
+								printAll({'DeleteEmptyChunks_text_keep_e', result.kept, list.occupied})
+							end
+						end
+					elseif list.paved > 0 then
+						if result.adjacent > 0 then
+							printAll({'DeleteEmptyChunks_text_keep_pa', result.kept, list.paved, result.adjacent})
+						else
+							printAll({'DeleteEmptyChunks_text_keep_p', result.kept, list.paved})
+						end
+					end
+				end
+				printAll({'DeleteEmptyChunks_text_delete', result.deleted})
+				if game.active_mods["rso-mod"] then
+					remote.call("RSO", "disableStartingArea")
+					remote.call("RSO", "resetGeneration", surface)
+				end
+			end
+		end
 	end
 end
 
@@ -257,6 +276,41 @@ function show_gui(player)
 	end
 end
 
+commands.add_command("DeleteEmptyChunks", {'DeleteEmptyChunks_command'}, function(param)
+	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
+	local radius = settings.global["DeleteEmptyChunks_radius"].value
+	local paving = settings.global["DeleteEmptyChunks_paving"].value
+	local index = 1
+	if param.parameter then
+		params = {}
+		for word in param.parameter:gmatch("%S+") do table.insert(params, word) end
+		if #params >= index and tonumber(params[index]) == nil then
+			target_surface = params[index]
+			index = index + 1
+		end
+		if #params >= index and tonumber(params[index]) ~= nil then
+			radius = tonumber(params[index])
+			index = index + 1
+		end
+		if #params >= index then
+			if string.lower(params[index]) == "yes" or string.lower(params[index]) == "y" then
+				paving = true
+			elseif string.lower(params[index]) == "no" or string.lower(params[index]) == "n" then
+				paving = false
+			end
+		end
+	end
+	if radius < 0 then radius = 0 end
+	doit(target_surface, radius, paving)
+end)
+
+remote.add_interface('DeleteEmptyChunks', {
+	getSurface = function() return settings.global["DeleteEmptyChunks_surface"].value end,
+	getRadius = function() return settings.global["DeleteEmptyChunks_radius"].value end,
+	getPaving = function() return settings.global["DeleteEmptyChunks_paving"].value end,
+	doIt = remote_doit
+})
+
 do---- Init ----
 script.on_init(function()
 	for _, player in pairs(game.players) do
@@ -274,14 +328,17 @@ script.on_configuration_changed(function(data)
 end)
 
 script.on_event({defines.events.on_player_created, defines.events.on_player_joined_game, defines.events.on_player_respawned}, function(event)
-  local player = game.players[event.player_index]
-  if player and player.valid then show_gui(player) end
+	local player = game.players[event.player_index]
+	if player and player.valid then show_gui(player) end
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
-  local gui = event.element
-  local player = game.players[event.player_index]
-  if not (player and player.valid and gui and gui.valid) then return end
-  if gui.name == "DeleteEmptyChunks" then doit() end
+	local gui = event.element
+	local player = game.players[event.player_index]
+	if not (player and player.valid and gui and gui.valid) then return end
+	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
+	local radius = settings.global["DeleteEmptyChunks_radius"].value
+	local paving = settings.global["DeleteEmptyChunks_paving"].value
+	if gui.name == "DeleteEmptyChunks" then doit(target_surface, radius, paving) end
 end)
 end
