@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.8
+Date: 2019-09-01
+  Features:
+    - Added support for Alien Biome and Space Exploration
+    - Improved console command and remote interface
+  Changes:
+    - Removed unneeded references for Factorismo2 and Surfaces_remake
+---------------------------------------------------------------------------------------------------
 Version: 0.3.6
 Date: 2019-08-25
   Features:

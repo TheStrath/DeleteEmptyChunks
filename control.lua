@@ -3,10 +3,10 @@ function remote_doit( args )
 	--remote.call("DeleteEmptyChunks", "getSurface")
 	--remote.call("DeleteEmptyChunks", "getRadius")
 	--remote.call("DeleteEmptyChunks", "getPaving")
-	--remote.call("DeleteEmptyChunks", "doIt", {surface = "nauvis", radius = 0, paving = false })
+	--remote.call("DeleteEmptyChunks", "DeleteEmptyChunks", {surface="nauvis", radius=0, paving=false})
 	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
 	local radius = settings.global["DeleteEmptyChunks_radius"].value
-	local paving = settings.global["DeleteEmptyChunks_paving"].value
+	local keep_paving = settings.global["DeleteEmptyChunks_paving"].value
 	if args.surface ~= nil then
 		target_surface = args.surface
 	end
@@ -14,23 +14,22 @@ function remote_doit( args )
 		radius = args.radius
 	end
 	if args.paving ~= nil then
-		paving = args.paving
+		keep_paving = args.paving
 	end
-	doit(target_surface, radius, paving)
+	doit(target_surface, radius, keep_paving)
 end
 
-function doit(target_surface, radius, paving)
+function doit(target_surface, radius, keep_paving)
 	local printAll = printAll
 	local getKeepList = getKeepList
 	local deleteChunks = deleteChunks
-	local vanilla_paving_list = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
-	                             "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path" }
-	-- ignoring these tiles: {"landfill", "water-mud", "water-shallow" 
-	local paving_list = {}
 	
-	if paving then
-		paving_list = getPavingTiles()
-		--log(table_to_csv(paving_list))
+	local paving = {}
+	local paving_base = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
+	                     "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path"}
+	if keep_paving then
+		paving = getPavingTiles()
+		--log(table_to_csv(paving))
 	end
 	
 	-- all player forces
@@ -51,16 +50,17 @@ function doit(target_surface, radius, paving)
 			found = true
 		end
 	end
+	--log(table_to_csv(surface_list))
 	if not found and #surface_list > 0 then
 		printAll({'DeleteEmptyChunks_text_mod_nosurface', target_surface, table_to_csv(surface_list)})
 	else
-		if #paving_list > 0 then
+		if #paving > 0 then
 			if radius > 0 then
 				printAll({'DeleteEmptyChunks_text_notifier_pr', radius})
 			else
 				printAll({'DeleteEmptyChunks_text_notifier_p'})
 			end
-			printAll({'DeleteEmptyChunks_text_notifier_paving', #paving_list, #vanilla_paving_list, #paving_list - #vanilla_paving_list})
+			printAll({'DeleteEmptyChunks_text_notifier_paving', #paving, #paving_base, #paving - #paving_base})
 		else
 			if radius > 0 then
 				printAll({'DeleteEmptyChunks_text_notifier_r', radius})
@@ -72,7 +72,7 @@ function doit(target_surface, radius, paving)
 		for _, surface in pairs (game.surfaces) do
 			if surface.name == target_surface then
 				-- First Pass
-				local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving_list)
+				local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving)
 				-- Save players from the void
 				for _, position in pairs(playerPositions) do
 					if list.coordinates[position.x] == nil then
@@ -138,42 +138,88 @@ function table_to_csv(list)
 end
 
 function getPavingTiles()
-	local paving_list = {}
-	local non_paving = {"deepwater", "deepwater-green", "dirt-1", "dirt-2", "dirt-3", "dirt-4", "dirt-5",
+	local paving = {}
+	local ground = {}
+	-- Ignored tileset for "Base mod" as of 0.17.66
+	-- Paving: {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path"}
+	local Base_tiles = {"deepwater", "deepwater-green", "dirt-1", "dirt-2", "dirt-3", "dirt-4", "dirt-5",
 	                    "dirt-6", "dirt-7", "dry-dirt", "grass-1", "grass-2", "grass-3", "grass-4", "lab-dark-1",
 	                    "lab-dark-2", "lab-white", "out-of-map", "red-desert-0", "red-desert-1", "red-desert-2",
 	                    "red-desert-3", "sand-1", "sand-2", "sand-3", "tutorial-grid", "water", "water-green",
 	                    "landfill", "water-mud", "water-shallow"}
+	for _, v in ipairs(Base_tiles) do
+		table.insert(ground, v)
+	end
 	
-	local Factorissimo2_tiles = {"factory-entrance-1", "factory-entrance-2", "factory-entrance-3", "factory-floor-1",
-	                             "factory-floor-2", "factory-floor-3", "factory-pattern-1", "factory-pattern-2",
-	                             "factory-pattern-3", "factory-wall-1", "factory-wall-2", "factory-wall-3", "out-of-factory"}
-	if game.active_mods["Factorissimo2"] then
-		for _, v in ipairs(Factorissimo2_tiles) do 
-			table.insert(non_paving, v)
+	-- Ignored tileset for "Alien Biome" exported from 0.4.15
+	-- Paving: none
+	local AlienBiomes_tiles = {"frozen-snow-0", "frozen-snow-1", "frozen-snow-2", "frozen-snow-3", "frozen-snow-4", "frozen-snow-5", "frozen-snow-6", "frozen-snow-7", "frozen-snow-8", "frozen-snow-9",
+	                           "mineral-aubergine-dirt-1", "mineral-aubergine-dirt-2", "mineral-aubergine-dirt-3", "mineral-aubergine-dirt-4", "mineral-aubergine-dirt-5", "mineral-aubergine-dirt-6",
+	                           "mineral-aubergine-sand-1", "mineral-aubergine-sand-2", "mineral-aubergine-sand-3",
+	                           "mineral-beige-dirt-1", "mineral-beige-dirt-2", "mineral-beige-dirt-3", "mineral-beige-dirt-4", "mineral-beige-dirt-5", "mineral-beige-dirt-6",
+	                           "mineral-beige-sand-1", "mineral-beige-sand-2", "mineral-beige-sand-3",
+	                           "mineral-black-dirt-1", "mineral-black-dirt-2", "mineral-black-dirt-3", "mineral-black-dirt-4", "mineral-black-dirt-5", "mineral-black-dirt-6",
+	                           "mineral-black-sand-1", "mineral-black-sand-2", "mineral-black-sand-3",
+	                           "mineral-brown-dirt-1", "mineral-brown-dirt-2", "mineral-brown-dirt-3", "mineral-brown-dirt-4", "mineral-brown-dirt-5", "mineral-brown-dirt-6",
+	                           "mineral-brown-sand-1", "mineral-brown-sand-2", "mineral-brown-sand-3",
+	                           "mineral-cream-dirt-1", "mineral-cream-dirt-2", "mineral-cream-dirt-3", "mineral-cream-dirt-4", "mineral-cream-dirt-5", "mineral-cream-dirt-6",
+	                           "mineral-cream-sand-1", "mineral-cream-sand-2", "mineral-cream-sand-3",
+	                           "mineral-dustyrose-dirt-1", "mineral-dustyrose-dirt-2", "mineral-dustyrose-dirt-3", "mineral-dustyrose-dirt-4", "mineral-dustyrose-dirt-5", "mineral-dustyrose-dirt-6",
+	                           "mineral-dustyrose-sand-1", "mineral-dustyrose-sand-2", "mineral-dustyrose-sand-3",
+	                           "mineral-grey-dirt-1", "mineral-grey-dirt-2", "mineral-grey-dirt-3", "mineral-grey-dirt-4", "mineral-grey-dirt-5", "mineral-grey-dirt-6",
+	                           "mineral-grey-sand-1", "mineral-grey-sand-2", "mineral-grey-sand-3",
+	                           "mineral-purple-dirt-1", "mineral-purple-dirt-2", "mineral-purple-dirt-3", "mineral-purple-dirt-4", "mineral-purple-dirt-5", "mineral-purple-dirt-6",
+	                           "mineral-purple-sand-1", "mineral-purple-sand-2", "mineral-purple-sand-3",
+	                           "mineral-red-dirt-1", "mineral-red-dirt-2", "mineral-red-dirt-3", "mineral-red-dirt-4", "mineral-red-dirt-5", "mineral-red-dirt-6",
+	                           "mineral-red-sand-1", "mineral-red-sand-2", "mineral-red-sand-3",
+	                           "mineral-tan-dirt-1", "mineral-tan-dirt-2", "mineral-tan-dirt-3", "mineral-tan-dirt-4", "mineral-tan-dirt-5", "mineral-tan-dirt-6",
+	                           "mineral-tan-sand-1", "mineral-tan-sand-2", "mineral-tan-sand-3",
+	                           "mineral-violet-dirt-1", "mineral-violet-dirt-2", "mineral-violet-dirt-3", "mineral-violet-dirt-4", "mineral-violet-dirt-5", "mineral-violet-dirt-6",
+	                           "mineral-violet-sand-1", "mineral-violet-sand-2", "mineral-violet-sand-3",
+	                           "mineral-white-dirt-1", "mineral-white-dirt-2", "mineral-white-dirt-3", "mineral-white-dirt-4", "mineral-white-dirt-5", "mineral-white-dirt-6",
+	                           "mineral-white-sand-1", "mineral-white-sand-2", "mineral-white-sand-3",
+	                           "vegetation-blue-grass-1", "vegetation-blue-grass-2",
+	                           "vegetation-green-grass-1", "vegetation-green-grass-2", "vegetation-green-grass-3", "vegetation-green-grass-4",
+	                           "vegetation-mauve-grass-1", "vegetation-mauve-grass-2",
+	                           "vegetation-olive-grass-1", "vegetation-olive-grass-2",
+	                           "vegetation-orange-grass-1", "vegetation-orange-grass-2",
+	                           "vegetation-purple-grass-1", "vegetation-purple-grass-2",
+	                           "vegetation-red-grass-1", "vegetation-red-grass-2",
+	                           "vegetation-turquoise-grass-1", "vegetation-turquoise-grass-2",
+	                           "vegetation-violet-grass-1", "vegetation-violet-grass-2",
+	                           "vegetation-yellow-grass-1", "vegetation-yellow-grass-2",
+	                           "volcanic-blue-heat-1", "volcanic-blue-heat-2", "volcanic-blue-heat-3", "volcanic-blue-heat-4",
+	                           "volcanic-green-heat-1", "volcanic-green-heat-2", "volcanic-green-heat-3", "volcanic-green-heat-4",
+	                           "volcanic-orange-heat-1", "volcanic-orange-heat-2", "volcanic-orange-heat-3", "volcanic-orange-heat-4",
+	                           "volcanic-purple-heat-1", "volcanic-purple-heat-2", "volcanic-purple-heat-3", "volcanic-purple-heat-4"}
+	if game.active_mods["alien-biomes"] then
+		for _, v in ipairs(AlienBiomes_tiles) do
+			table.insert(ground, v)
 		end
 	end
 	
-	local Surfaces_remake_tiles = {"sky-void", "underground-dirt", "underground-wall", "wooden-floor"}
-	if game.active_mods["Surfaces_remake"] then
-		for _, v in ipairs(Surfaces_remake_tiles) do 
-			table.insert(non_paving, v)
+	-- Ignored tileset for "Space Exploration" exported from 0.1.137
+	-- Paving:  {"se-space-platform-plating", "se-space-platform-scaffold", "se-spaceship-floor"}
+	local SpaceExploration_tiles = {"se-asteroid", "se-regolith", "se-space"}
+	if game.active_mods["space-exploration"] then
+		for _, v in ipairs(SpaceExploration_tiles) do
+			table.insert(ground, v)
 		end
 	end
 	
 	for _, t in pairs(game.tile_prototypes) do
 		local found = false
-		for _, s in pairs(non_paving) do
+		for _, s in pairs(ground) do
 			if t.name == s then
 				found = true
 				break
 			end
 		end
 		if not found then
-			table.insert(paving_list, t.name)
+			table.insert(paving, t.name)
 		end
 	end
-	return paving_list
+	return paving
 end
 
 function getKeepList(surface, playerForceNames, overlap, pavers)
@@ -277,38 +323,18 @@ function show_gui(player)
 end
 
 commands.add_command("DeleteEmptyChunks", {'DeleteEmptyChunks_command'}, function(param)
-	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
-	local radius = settings.global["DeleteEmptyChunks_radius"].value
-	local paving = settings.global["DeleteEmptyChunks_paving"].value
-	local index = 1
+	local args = {}
 	if param.parameter then
-		params = {}
-		for word in param.parameter:gmatch("%S+") do table.insert(params, word) end
-		if #params >= index and tonumber(params[index]) == nil then
-			target_surface = params[index]
-			index = index + 1
-		end
-		if #params >= index and tonumber(params[index]) ~= nil then
-			radius = tonumber(params[index])
-			index = index + 1
-		end
-		if #params >= index then
-			if string.lower(params[index]) == "yes" or string.lower(params[index]) == "y" then
-				paving = true
-			elseif string.lower(params[index]) == "no" or string.lower(params[index]) == "n" then
-				paving = false
-			end
-		end
+		args = load("return "..param.parameter)()
 	end
-	if radius < 0 then radius = 0 end
-	doit(target_surface, radius, paving)
+	remote_doit( args )
 end)
 
 remote.add_interface('DeleteEmptyChunks', {
 	getSurface = function() return settings.global["DeleteEmptyChunks_surface"].value end,
 	getRadius = function() return settings.global["DeleteEmptyChunks_radius"].value end,
 	getPaving = function() return settings.global["DeleteEmptyChunks_paving"].value end,
-	doIt = remote_doit
+	DeleteEmptyChunks = remote_doit
 })
 
 do---- Init ----
@@ -338,7 +364,7 @@ script.on_event(defines.events.on_gui_click, function(event)
 	if not (player and player.valid and gui and gui.valid) then return end
 	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
 	local radius = settings.global["DeleteEmptyChunks_radius"].value
-	local paving = settings.global["DeleteEmptyChunks_paving"].value
-	if gui.name == "DeleteEmptyChunks" then doit(target_surface, radius, paving) end
+	local keep_paving = settings.global["DeleteEmptyChunks_paving"].value
+	if gui.name == "DeleteEmptyChunks" then doit(target_surface, radius, keep_paving) end
 end)
 end
