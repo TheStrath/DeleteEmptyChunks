@@ -1,5 +1,5 @@
 require("mod-gui")
-function remote_doit( args )
+function remote_doit(args)
 	--remote.call("DeleteEmptyChunks", "getSurface")
 	--remote.call("DeleteEmptyChunks", "getRadius")
 	--remote.call("DeleteEmptyChunks", "getPaving")
@@ -20,10 +20,7 @@ function remote_doit( args )
 end
 
 function doit(target_surface, radius, keep_paving)
-	local printAll = printAll
-	local getKeepList = getKeepList
-	local deleteChunks = deleteChunks
-	
+	-- Get list of possible paving
 	local paving = {}
 	local paving_base = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
 	                     "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path"}
@@ -32,7 +29,7 @@ function doit(target_surface, radius, keep_paving)
 		--log(table_to_csv(paving))
 	end
 	
-	-- all player forces
+	-- Get list of all player positions and forces
 	local playerForceNames = {}
 	local playerPositions = {}
 	for _, player in pairs(game.players) do
@@ -40,18 +37,20 @@ function doit(target_surface, radius, keep_paving)
 		table.insert( playerPositions, {x = math.floor(player.position.x / 32), y = math.floor(player.position.y / 32)})
 	end
 	if #playerForceNames > 1 then printAll({'DeleteEmptyChunks_text_force', table_to_csv(playerForceNames)}) end
-	
+
 	-- Verify surface exists
+	local surface = nil
 	local surface_list = {}
-	local found = false
-	for _, surface in pairs (game.surfaces) do
-		table.insert( surface_list, surface.name )
-		if surface.name == target_surface then
-			found = true
+	for _, candidate in pairs (game.surfaces) do
+		table.insert( surface_list, candidate.name )
+		if candidate.name == target_surface then
+			surface = candidate
 		end
 	end
 	--log(table_to_csv(surface_list))
-	if not found and #surface_list > 0 then
+	
+	-- Let the players know what is happening
+	if surface == nil and #surface_list > 0 then
 		printAll({'DeleteEmptyChunks_text_mod_nosurface', target_surface, table_to_csv(surface_list)})
 	else
 		if #paving > 0 then
@@ -68,50 +67,48 @@ function doit(target_surface, radius, keep_paving)
 				printAll({'DeleteEmptyChunks_text_notifier'})
 			end
 		end
-		-- Iterate Surfaces
-		for _, surface in pairs (game.surfaces) do
-			if surface.name == target_surface then
-				-- First Pass
-				local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving)
-				-- Save players from the void
-				for _, position in pairs(playerPositions) do
-					if list.coordinates[position.x] == nil then
-						list.coordinates[position.x]={}
-					end
-					list.coordinates[position.x][position.y]=1
+		-- Perform chunk deletion on specified surface
+		if surface ~= nil then
+			-- First Pass
+			local list = getKeepList(surface, playerForceNames, radius == 0 and 1 or 0, paving)
+			-- Save players from the void
+			for _, position in pairs(playerPositions) do
+				if list.coordinates[position.x] == nil then
+					list.coordinates[position.x]={}
 				end
-				-- Second Pass
-				local result = deleteChunks(surface, list.coordinates, radius)
-				-- Done
-				printAll({'DeleteEmptyChunks_text_starting', list.total, surface.name, list.total - list.uncharted})
-				if result.kept > 0 then
-					if list.occupied > 0 then
-						if list.paved > 0 then
-							if result.adjacent > 0 then
-								printAll({'DeleteEmptyChunks_text_keep_epa', result.kept, list.occupied, list.paved, result.adjacent})
-							else
-								printAll({'DeleteEmptyChunks_text_keep_ep', result.kept, list.occupied, list.paved})
-							end
-						else
-							if result.adjacent > 0 then
-								printAll({'DeleteEmptyChunks_text_keep_ea', result.kept, list.occupied, result.adjacent})
-							else
-								printAll({'DeleteEmptyChunks_text_keep_e', result.kept, list.occupied})
-							end
-						end
-					elseif list.paved > 0 then
+				list.coordinates[position.x][position.y]=1
+			end
+			-- Second Pass
+			local result = deleteChunks(surface, list.coordinates, radius)
+			-- Report results to all players
+			printAll({'DeleteEmptyChunks_text_starting', list.total, surface.name, list.total - list.uncharted})
+			if result.kept > 0 then
+				if list.occupied > 0 then
+					if list.paved > 0 then
 						if result.adjacent > 0 then
-							printAll({'DeleteEmptyChunks_text_keep_pa', result.kept, list.paved, result.adjacent})
+							printAll({'DeleteEmptyChunks_text_keep_epa', result.kept, list.occupied, list.paved, result.adjacent})
 						else
-							printAll({'DeleteEmptyChunks_text_keep_p', result.kept, list.paved})
+							printAll({'DeleteEmptyChunks_text_keep_ep', result.kept, list.occupied, list.paved})
+						end
+					else
+						if result.adjacent > 0 then
+							printAll({'DeleteEmptyChunks_text_keep_ea', result.kept, list.occupied, result.adjacent})
+						else
+							printAll({'DeleteEmptyChunks_text_keep_e', result.kept, list.occupied})
 						end
 					end
+				elseif list.paved > 0 then
+					if result.adjacent > 0 then
+						printAll({'DeleteEmptyChunks_text_keep_pa', result.kept, list.paved, result.adjacent})
+					else
+						printAll({'DeleteEmptyChunks_text_keep_p', result.kept, list.paved})
+					end
 				end
-				printAll({'DeleteEmptyChunks_text_delete', result.deleted})
-				if game.active_mods["rso-mod"] then
-					remote.call("RSO", "disableStartingArea")
-					remote.call("RSO", "resetGeneration", surface)
-				end
+			end
+			printAll({'DeleteEmptyChunks_text_delete', result.deleted})
+			if game.active_mods["rso-mod"] then
+				remote.call("RSO", "disableStartingArea")
+				remote.call("RSO", "resetGeneration", surface)
 			end
 		end
 	end
@@ -270,6 +267,22 @@ function getKeepList(surface, playerForceNames, overlap, pavers)
 			count_uncharted = count_uncharted + 1
 		end
 		count_total_chunks = count_total_chunks + 1
+	end
+	-- Compatibility with Mining Drones, Mining_Drones_0.3.2/script/mining_drone.lua:24
+	-- Of course it just has to be right on a chunk boundry.
+	if game.active_mods["Mining_Drones"] and surface.name == 'nauvis' then
+	  local x = 1000000/32
+		local y = 1000000/32
+		if keepcords[x-1] == nil then
+			keepcords[x-1]={}
+		end
+		keepcords[x-1][y-1]=1
+		keepcords[x-1][y]=1
+		if keepcords[x] == nil then
+			keepcords[x]={}
+		end
+		keepcords[x][y-1]=1
+		keepcords[x][y]=1
 	end
 	return {total=count_total_chunks, occupied=count_with_entities, paved=count_with_paving, coordinates=keepcords, uncharted = count_uncharted}
 end
