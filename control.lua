@@ -1,5 +1,5 @@
 require("mod-gui")
-function remote_doit(args)
+function remote_doit(who, args)
 	--remote.call("DeleteEmptyChunks", "getSurface")
 	--remote.call("DeleteEmptyChunks", "getRadius")
 	--remote.call("DeleteEmptyChunks", "getPaving")
@@ -16,10 +16,10 @@ function remote_doit(args)
 	if args.paving ~= nil then
 		keep_paving = args.paving
 	end
-	doit(target_surface, radius, keep_paving)
+	doit(who, target_surface, radius, keep_paving)
 end
 
-function doit(target_surface, radius, keep_paving)
+function doit(who, target_surface, radius, keep_paving)
 	-- Get list of possible paving
 	local paving = {}
 	local paving_base = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
@@ -55,16 +55,16 @@ function doit(target_surface, radius, keep_paving)
 	else
 		if #paving > 0 then
 			if radius > 0 then
-				printAll({'DeleteEmptyChunks_text_notifier_pr', radius})
+				printAll({'DeleteEmptyChunks_text_notifier_pr', who, radius})
 			else
-				printAll({'DeleteEmptyChunks_text_notifier_p'})
+				printAll({'DeleteEmptyChunks_text_notifier_p', who})
 			end
 			printAll({'DeleteEmptyChunks_text_notifier_paving', #paving, #paving_base, #paving - #paving_base})
 		else
 			if radius > 0 then
-				printAll({'DeleteEmptyChunks_text_notifier_r', radius})
+				printAll({'DeleteEmptyChunks_text_notifier_r', who, radius})
 			else
-				printAll({'DeleteEmptyChunks_text_notifier'})
+				printAll({'DeleteEmptyChunks_text_notifier', who})
 			end
 		end
 		-- Perform chunk deletion on specified surface
@@ -271,7 +271,7 @@ function getKeepList(surface, playerForceNames, overlap, pavers)
 	-- Compatibility with Mining Drones, Mining_Drones_0.3.2/script/mining_drone.lua:24
 	-- Of course it just has to be right on a chunk boundry.
 	if game.active_mods["Mining_Drones"] and surface.name == 'nauvis' then
-	  local x = 1000000/32
+		local x = 1000000/32
 		local y = 1000000/32
 		if keepcords[x-1] == nil then
 			keepcords[x-1]={}
@@ -323,7 +323,9 @@ function deleteChunks(surface, coordinates, radius)
 end
 
 function show_gui(player)
+	if not (player and player.valid) then return end
 	local gui = mod_gui.get_button_flow(player)
+	if not (gui and gui.valid) then return end
 	if not gui.DeleteEmptyChunks then
 		gui.add{
 			type = "sprite-button",
@@ -335,12 +337,33 @@ function show_gui(player)
 	end
 end
 
+function hide_gui(player)
+	if not (player and player.valid) then return end
+	local gui = mod_gui.get_button_flow(player)
+	if not (gui and gui.valid) then return end
+	if gui.DeleteEmptyChunks then
+		gui.DeleteEmptyChunks.destroy()
+	end
+end
+
 commands.add_command("DeleteEmptyChunks", {'DeleteEmptyChunks_command'}, function(param)
 	local args = {}
-	if param.parameter then
-		args = load("return "..param.parameter)()
+	if param.player_index then
+		local player = game.players[param.player_index]
+		if player.admin then
+			if param.parameter then
+				args = load("return "..param.parameter)()
+			end
+			remote_doit(player.name, args)
+		else
+			player.print({'DeleteEmptyChunks_adminsonly'})
+		end
+	else
+		if param.parameter then
+			args = load("return "..param.parameter)()
+		end
+		remote_doit("Server console", args)
 	end
-	remote_doit( args )
 end)
 
 remote.add_interface('DeleteEmptyChunks', {
@@ -353,31 +376,67 @@ remote.add_interface('DeleteEmptyChunks', {
 do---- Init ----
 script.on_init(function()
 	for _, player in pairs(game.players) do
-		if player and player.valid then show_gui(player) end
+		if player and player.valid then 
+			if player.admin then
+				show_gui(player)
+			else
+				hide_gui(player)
+			end
+		end
 	end
 end)
 
 script.on_configuration_changed(function(data)
 	for _, player in pairs(game.players) do
 		if player and player.valid then
-			if player.gui.left.DeleteEmptyChunks_button then	player.gui.left.DeleteEmptyChunks_button.destroy()	end
-			show_gui(player)
+			if player.gui.left.DeleteEmptyChunks_button then player.gui.left.DeleteEmptyChunks_button.destroy()	end
+			if player.admin then
+				show_gui(player)
+			else
+				hide_gui(player)
+			end
 		end
 	end
 end)
 
 script.on_event({defines.events.on_player_created, defines.events.on_player_joined_game, defines.events.on_player_respawned}, function(event)
-	local player = game.players[event.player_index]
-	if player and player.valid then show_gui(player) end
+	if event.player_index then
+		local player = game.players[event.player_index]
+		if player and player.valid then
+			if player.admin then
+				show_gui(player)
+			else
+				hide_gui(player)
+			end
+		end
+	end
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
 	local gui = event.element
-	local player = game.players[event.player_index]
-	if not (player and player.valid and gui and gui.valid) then return end
-	local target_surface = settings.global["DeleteEmptyChunks_surface"].value
-	local radius = settings.global["DeleteEmptyChunks_radius"].value
-	local keep_paving = settings.global["DeleteEmptyChunks_paving"].value
-	if gui.name == "DeleteEmptyChunks" then doit(target_surface, radius, keep_paving) end
+	if event.player_index then
+		local player = game.players[event.player_index]
+		if not (player and player.valid and gui and gui.valid) then return end
+		if player.admin then
+			local target_surface = settings.global["DeleteEmptyChunks_surface"].value
+			local radius = settings.global["DeleteEmptyChunks_radius"].value
+			local keep_paving = settings.global["DeleteEmptyChunks_paving"].value
+			if gui.name == "DeleteEmptyChunks" then doit(player.name, target_surface, radius, keep_paving) end
+		else
+			player.print({'DeleteEmptyChunks_adminsonly'})
+		end
+	end
+end)
+
+script.on_event(defines.events.on_player_promoted, function(event)
+	if event.player_index then
+		show_gui(game.players[event.player_index])
+	end
+end)
+
+script.on_event(defines.events.on_player_demoted, function(event)
+	if event.player_index then
+		hide_gui(game.players[event.player_index])
+	end
 end)
 end
