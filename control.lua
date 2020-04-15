@@ -419,6 +419,9 @@ script.on_event(defines.events.on_gui_click, function(event)
 		if not (player and player.valid and gui and gui.valid) then return end
 		if player.admin then
 			local target_surface = settings.global["DeleteEmptyChunks_surface"].value
+			if target_surface == "." then
+				target_surface = player.surface.name
+			end
 			local radius = settings.global["DeleteEmptyChunks_radius"].value
 			local keep_paving = settings.global["DeleteEmptyChunks_paving"].value
 			if gui.name == "DeleteEmptyChunks" then doit(player.name, target_surface, radius, keep_paving) end
