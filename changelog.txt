@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.1
+Date: 2020-04-22
+  Features:
+    - Support for creep introduced by Krastorio2
+    - Recognizes colored refined-concrete added in later versions of 0.18
+---------------------------------------------------------------------------------------------------
 Version: 0.4.0
 Date: 2020-02-15
   Features:

@@ -22,8 +22,9 @@ end
 function doit(who, target_surface, radius, keep_paving)
 	-- Get list of possible paving
 	local paving = {}
-	local paving_base = {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete",
-	                     "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path"}
+	local paving_base = {"stone-path", "concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right",
+	                     "acid-refined-concrete", "black-refined-concrete", "blue-refined-concrete", "brown-refined-concrete", "cyan-refined-concrete", "green-refined-concrete",
+	                     "orange-refined-concrete", "pink-refined-concrete", "purple-refined-concrete", "red-refined-concrete", "yellow-refined-concrete"}
 	if keep_paving then
 		paving = getPavingTiles()
 		--log(table_to_csv(paving))
@@ -138,7 +139,9 @@ function getPavingTiles()
 	local paving = {}
 	local ground = {}
 	-- Ignored tileset for "Base mod" as of 0.17.66
-	-- Paving: {"concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right", "stone-path"}
+	-- Paving: {"stone-path", "concrete", "hazard-concrete-left", "hazard-concrete-right", "refined-concrete", "refined-hazard-concrete-left", "refined-hazard-concrete-right",
+	--          "acid-refined-concrete", "black-refined-concrete", "blue-refined-concrete", "brown-refined-concrete", "cyan-refined-concrete", "green-refined-concrete",
+	--          "orange-refined-concrete", "pink-refined-concrete", "purple-refined-concrete", "red-refined-concrete", "yellow-refined-concrete"}
 	local Base_tiles = {"deepwater", "deepwater-green", "dirt-1", "dirt-2", "dirt-3", "dirt-4", "dirt-5",
 	                    "dirt-6", "dirt-7", "dry-dirt", "grass-1", "grass-2", "grass-3", "grass-4", "lab-dark-1",
 	                    "lab-dark-2", "lab-white", "out-of-map", "red-desert-0", "red-desert-1", "red-desert-2",
@@ -200,6 +203,15 @@ function getPavingTiles()
 	local SpaceExploration_tiles = {"se-asteroid", "se-regolith", "se-space"}
 	if game.active_mods["space-exploration"] then
 		for _, v in ipairs(SpaceExploration_tiles) do
+			table.insert(ground, v)
+		end
+	end
+	
+	-- Ignored tileset for "Krastorio2" exported from 0.9.11
+	-- Paving:  {"kr-black-reinforced-plate", "kr-white-reinforced-plate"}
+	local Krastorio2_tiles = {"kr-creep"}
+	if game.active_mods["Krastorio2"] then
+		for _, v in ipairs(Krastorio2_tiles) do
 			table.insert(ground, v)
 		end
 	end
